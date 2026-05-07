@@ -1,0 +1,2384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>VetCloud — Historia Clínica Veterinaria</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root {
+    --navy: #0a2342;
+    --navy-mid: #1a3a5c;
+    --blue: #1e6fa0;
+    --blue-light: #2e9ed6;
+    --blue-pale: #e8f4fd;
+    --blue-soft: #cce6f7;
+    --accent: #0fb4e7;
+    --white: #ffffff;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-500: #64748b;
+    --gray-700: #334155;
+    --gray-900: #0f172a;
+    --success: #16a34a;
+    --success-bg: #dcfce7;
+    --warn: #d97706;
+    --warn-bg: #fef3c7;
+    --danger: #dc2626;
+    --danger-bg: #fee2e2;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(10,35,66,0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-900);
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── LAYOUT ── */
+  #app { display: flex; min-height: 100vh; }
+
+  /* SIDEBAR */
+  #sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--navy);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar-logo {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .sidebar-logo .logo-mark {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--blue-light);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text { color: white; }
+  .logo-text .brand { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-text .tagline { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 1px; }
+
+  .sidebar-section { padding: 16px 12px 8px; }
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.8px;
+    color: rgba(255,255,255,0.35); text-transform: uppercase;
+    padding: 0 8px; margin-bottom: 6px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: var(--radius-sm);
+    color: rgba(255,255,255,0.65); cursor: pointer;
+    transition: all 0.15s; font-size: 13.5px; font-weight: 450;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
+  .nav-item.active { background: var(--blue-light); color: white; }
+
+  .nav-icon { font-size: 16px; width: 18px; text-align: center; }
+
+  .sidebar-footer {
+    margin-top: auto; padding: 16px 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* MAIN */
+  #main {
+    margin-left: 240px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  #topbar {
+    height: 56px;
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .topbar-title { font-size: 16px; font-weight: 600; color: var(--navy); flex: 1; }
+
+  #content { padding: 24px; flex: 1; }
+
+  /* ── COMPONENTS ── */
+  .card {
+    background: white; border: 1px solid var(--gray-200);
+    border-radius: var(--radius); padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .card-title { font-size: 15px; font-weight: 600; color: var(--navy); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: none; transition: all 0.15s; text-decoration: none;
+  }
+
+  .btn-primary {
+    background: var(--blue); color: white;
+  }
+  .btn-primary:hover { background: var(--navy-mid); }
+
+  .btn-navy {
+    background: var(--navy); color: white;
+  }
+  .btn-navy:hover { background: var(--navy-mid); }
+
+  .btn-outline {
+    background: white; color: var(--blue); border: 1px solid var(--blue-soft);
+  }
+  .btn-outline:hover { background: var(--blue-pale); }
+
+  .btn-ghost {
+    background: transparent; color: var(--gray-500);
+    border: 1px solid var(--gray-200);
+  }
+  .btn-ghost:hover { background: var(--gray-100); color: var(--gray-700); }
+
+  .btn-danger {
+    background: var(--danger-bg); color: var(--danger);
+    border: 1px solid #fca5a5;
+  }
+
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11.5px; font-weight: 500;
+  }
+
+  .badge-blue { background: var(--blue-pale); color: var(--blue); }
+  .badge-green { background: var(--success-bg); color: var(--success); }
+  .badge-warn { background: var(--warn-bg); color: var(--warn); }
+  .badge-red { background: var(--danger-bg); color: var(--danger); }
+  .badge-gray { background: var(--gray-100); color: var(--gray-500); }
+
+  /* Forms */
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 12.5px; font-weight: 500; color: var(--gray-700); margin-bottom: 5px; }
+  .form-label .req { color: var(--danger); margin-left: 2px; }
+
+  .form-input, .form-select, .form-textarea {
+    width: 100%; padding: 9px 12px;
+    border: 1px solid var(--gray-300); border-radius: var(--radius-sm);
+    font-size: 13.5px; color: var(--gray-900); background: white;
+    transition: border-color 0.15s; outline: none; font-family: inherit;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--blue-light); box-shadow: 0 0 0 3px rgba(46,158,214,0.12);
+  }
+
+  .form-textarea { resize: vertical; min-height: 80px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+  /* Stats */
+  .stat-card {
+    background: white; border: 1px solid var(--gray-200);
+    border-radius: var(--radius); padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .stat-label { font-size: 12px; color: var(--gray-500); margin-bottom: 6px; font-weight: 500; }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--navy); line-height: 1; }
+  .stat-sub { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+  .stat-icon {
+    width: 38px; height: 38px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; margin-bottom: 10px;
+  }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--gray-50); padding: 10px 14px;
+    text-align: left; font-size: 11.5px; font-weight: 600;
+    color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  tbody td {
+    padding: 12px 14px; border-bottom: 1px solid var(--gray-100);
+    font-size: 13.5px; color: var(--gray-700);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--gray-50); }
+
+  /* Avatar */
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; flex-shrink: 0;
+  }
+
+  .avatar-blue { background: var(--blue-pale); color: var(--blue); }
+  .avatar-navy { background: rgba(10,35,66,0.1); color: var(--navy); }
+
+  .pet-avatar {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--blue-pale); display: flex;
+    align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(10,35,66,0.45);
+    z-index: 200; display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.15s ease;
+  }
+
+  .modal {
+    background: white; border-radius: 14px;
+    width: 100%; max-width: 600px; max-height: 90vh;
+    overflow-y: auto; box-shadow: var(--shadow-md);
+    animation: slideUp 0.2s ease;
+  }
+
+  .modal-lg { max-width: 800px; }
+
+  .modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: white; z-index: 1; border-radius: 14px 14px 0 0;
+  }
+
+  .modal-title { font-size: 16px; font-weight: 600; color: var(--navy); }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--gray-200);
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+
+  .btn-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--gray-500); font-size: 18px; padding: 4px;
+    border-radius: 6px; display: flex; align-items: center;
+  }
+  .btn-close:hover { background: var(--gray-100); color: var(--gray-700); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--gray-200); margin-bottom: 20px; }
+
+  .tab-btn {
+    padding: 8px 16px; font-size: 13px; font-weight: 500;
+    color: var(--gray-500); border: none; background: none; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    transition: all 0.15s;
+  }
+
+  .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .tab-btn:hover:not(.active) { color: var(--gray-700); }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Search */
+  .search-wrap { position: relative; }
+  .search-wrap .search-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--gray-500); font-size: 14px;
+  }
+  .search-input {
+    padding-left: 34px !important;
+  }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 48px 24px; }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-title { font-size: 15px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; color: var(--gray-500); }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 7px; top: 0; bottom: 0;
+    width: 2px; background: var(--gray-200);
+  }
+
+  .timeline-item { position: relative; margin-bottom: 20px; }
+  .timeline-dot {
+    position: absolute; left: -21px; top: 4px;
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid white; background: var(--blue);
+  }
+
+  .timeline-card {
+    background: white; border: 1px solid var(--gray-200);
+    border-radius: var(--radius); padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .timeline-meta { font-size: 11.5px; color: var(--gray-500); margin-bottom: 6px; }
+  .timeline-title { font-size: 13.5px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+
+  /* Attachments */
+  .attachment-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm); margin-bottom: 6px;
+  }
+
+  .attach-icon { font-size: 20px; }
+  .attach-name { font-size: 13px; font-weight: 500; color: var(--gray-700); flex: 1; }
+  .attach-size { font-size: 11px; color: var(--gray-500); }
+
+  /* File upload */
+  .file-upload-area {
+    border: 2px dashed var(--gray-300); border-radius: var(--radius);
+    padding: 24px; text-align: center; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .file-upload-area:hover { border-color: var(--blue-light); background: var(--blue-pale); }
+  .file-upload-area.drag { border-color: var(--blue-light); background: var(--blue-pale); }
+
+  /* Mobile */
+  .mobile-toggle {
+    display: none; background: none; border: none; cursor: pointer;
+    font-size: 20px; color: var(--navy); padding: 6px;
+  }
+
+  .sidebar-backdrop {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4); z-index: 99;
+  }
+
+  /* Vitals grid */
+  .vital-box {
+    background: var(--gray-50); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm); padding: 10px 12px; text-align: center;
+  }
+  .vital-label { font-size: 11px; color: var(--gray-500); margin-bottom: 4px; }
+  .vital-value { font-size: 16px; font-weight: 700; color: var(--navy); }
+  .vital-unit { font-size: 11px; color: var(--gray-500); }
+
+  /* Patient card */
+  .patient-mini-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border: 1px solid var(--gray-200);
+    border-radius: var(--radius); cursor: pointer; transition: all 0.15s;
+    background: white;
+  }
+  .patient-mini-card:hover { border-color: var(--blue-light); box-shadow: 0 0 0 3px rgba(46,158,214,0.1); }
+
+  .info-row { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--gray-500); margin-bottom: 3px; }
+
+  /* Loading */
+  .spinner {
+    width: 20px; height: 20px; border: 2px solid var(--gray-200);
+    border-top-color: var(--blue); border-radius: 50%;
+    animation: spin 0.6s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    #sidebar { transform: translateX(-100%); }
+    #sidebar.open { transform: translateX(0); }
+    #main { margin-left: 0; }
+    .sidebar-backdrop.show { display: block; }
+    .mobile-toggle { display: flex; }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    #content { padding: 16px; }
+    .topbar-title { font-size: 14px; }
+    .modal { max-width: 100%; }
+    .stat-value { font-size: 22px; }
+    table { font-size: 12.5px; }
+    thead th, tbody td { padding: 8px 10px; }
+  }
+
+  @media (max-width: 480px) {
+    .btn { padding: 7px 12px; font-size: 12px; }
+    .card { padding: 14px; }
+  }
+
+  /* Drive status bar */
+  .drive-status {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px; background: var(--gray-100); border-radius: 20px;
+    font-size: 12px; color: var(--gray-500);
+  }
+  .drive-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gray-300); }
+  .drive-dot.connected { background: var(--success); }
+
+  /* Print styles */
+  @media print {
+    #sidebar, #topbar, .no-print { display: none !important; }
+    #main { margin-left: 0; }
+    body { background: white; }
+  }
+
+  .section-divider {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.6px;
+    text-transform: uppercase; color: var(--gray-500);
+    display: flex; align-items: center; gap: 8px; margin: 20px 0 12px;
+  }
+  .section-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--gray-200);
+  }
+
+  .pill-select {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
+  }
+  .pill-opt {
+    padding: 5px 12px; border-radius: 20px; font-size: 12.5px;
+    border: 1px solid var(--gray-300); cursor: pointer; transition: all 0.15s;
+    background: white; color: var(--gray-700);
+  }
+  .pill-opt.selected { background: var(--blue); color: white; border-color: var(--blue); }
+
+  .history-export-header {
+    background: var(--navy); color: white; padding: 24px 32px;
+    display: flex; align-items: center; gap: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon">🐾</div>
+        <div class="logo-text">
+          <div class="brand">VetCloud</div>
+          <div class="tagline">Historia Clínica Veterinaria</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Principal</div>
+      <button class="nav-item active" onclick="navigate('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </button>
+      <button class="nav-item" onclick="navigate('propietarios')">
+        <span class="nav-icon">👤</span> Propietarios
+      </button>
+      <button class="nav-item" onclick="navigate('pacientes')">
+        <span class="nav-icon">🐶</span> Pacientes
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Clínica</div>
+      <button class="nav-item" onclick="navigate('consultas')">
+        <span class="nav-icon">🩺</span> Consultas
+      </button>
+      <button class="nav-item" onclick="navigate('hospitalizacion')">
+        <span class="nav-icon">🏥</span> Hospitalización
+      </button>
+      <button class="nav-item" onclick="navigate('seguimientos')">
+        <span class="nav-icon">📅</span> Seguimientos
+      </button>
+      <button class="nav-item" onclick="navigate('examenes')">
+        <span class="nav-icon">🔬</span> Exámenes
+      </button>
+      <button class="nav-item" onclick="navigate('formulacion')">
+        <span class="nav-icon">💊</span> Formulación
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Reportes</div>
+      <button class="nav-item" onclick="navigate('historias')">
+        <span class="nav-icon">📋</span> Exportar Historias
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="drive-status" id="driveStatus">
+        <div class="drive-dot" id="driveDot"></div>
+        <span id="driveStatusText">Sin conectar</span>
+      </div>
+      <button class="btn btn-outline" style="width:100%; margin-top:10px; font-size:12px;" onclick="connectDrive()">
+        <span>🔗</span> Conectar Google Drive
+      </button>
+    </div>
+  </nav>
+
+  <!-- BACKDROP -->
+  <div class="sidebar-backdrop" id="backdrop" onclick="closeSidebar()"></div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="topbar">
+      <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbarTitle">Dashboard</div>
+      <div id="topbarActions"></div>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<!-- MODAL CONTAINER -->
+<div id="modalContainer"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA STORE — LocalStorage + Google Sheets
+// ═══════════════════════════════════════════
+const SHEETS_API = 'https://script.google.com/macros/s/AKfycbwCDZ4TaqxmigUHwINi3qh2m4tvCFcJleP7WzKF-c1pzDkP74uUhyqr-ho75nN3W59NNQ/exec';
+const STORES = ['propietarios','pacientes','consultas','hospitalizaciones','seguimientos','examenes','formulaciones'];
+
+let syncTimeout = null;
+let syncStatus = 'idle'; // idle | syncing | ok | error
+
+const DB = {
+  get(key) {
+    try { return JSON.parse(localStorage.getItem('vc_' + key)) || []; } catch { return []; }
+  },
+  set(key, val) {
+    try {
+      localStorage.setItem('vc_' + key, JSON.stringify(val));
+      schedulSync();
+    } catch {}
+  },
+  generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+};
+
+function schedulSync() {
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(pushToSheets, 1500);
+}
+
+async function pushToSheets() {
+  syncStatus = 'syncing';
+  updateDriveStatus();
+  try {
+    for (const store of STORES) {
+      const data = DB.get(store);
+      await fetch(SHEETS_API, {
+        method: 'POST',
+        body: JSON.stringify({ store, data })
+      });
+    }
+    syncStatus = 'ok';
+    localStorage.setItem('vc_last_sync', new Date().toISOString());
+  } catch {
+    syncStatus = 'error';
+  }
+  updateDriveStatus();
+}
+
+async function pullFromSheets() {
+  syncStatus = 'syncing';
+  updateDriveStatus();
+  try {
+    for (const store of STORES) {
+      const res = await fetch(SHEETS_API + '?store=' + store);
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        localStorage.setItem('vc_' + store, JSON.stringify(data));
+      }
+    }
+    syncStatus = 'ok';
+    localStorage.setItem('vc_last_sync', new Date().toISOString());
+    navigate(currentPage);
+  } catch {
+    syncStatus = 'error';
+  }
+  updateDriveStatus();
+}
+
+function updateDriveStatus() {
+  const dot = document.getElementById('driveDot');
+  const txt = document.getElementById('driveStatusText');
+  if (!dot || !txt) return;
+  if (syncStatus === 'syncing') {
+    dot.className = 'drive-dot'; dot.style.background = '#f59e0b';
+    txt.textContent = 'Sincronizando…';
+  } else if (syncStatus === 'ok') {
+    dot.className = 'drive-dot connected'; dot.style.background = '';
+    const last = localStorage.getItem('vc_last_sync');
+    const hora = last ? new Date(last).toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'}) : '';
+    txt.textContent = 'Sheets ✓' + (hora ? ' · ' + hora : '');
+  } else if (syncStatus === 'error') {
+    dot.className = 'drive-dot'; dot.style.background = '#dc2626';
+    txt.textContent = 'Error de sync';
+  } else {
+    dot.className = 'drive-dot'; dot.style.background = '';
+    txt.textContent = 'Google Sheets';
+  }
+}
+
+function connectDrive() {
+  pullFromSheets();
+}
+
+// Al cargar, sincronizar automáticamente
+window.addEventListener('load', () => {
+  setTimeout(pullFromSheets, 1000);
+});
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+let currentPage = 'dashboard';
+
+function navigate(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.remove('active');
+    if (el.getAttribute('onclick') === `navigate('${page}')`) el.classList.add('active');
+  });
+  const titles = {
+    dashboard: 'Dashboard',
+    propietarios: 'Propietarios',
+    pacientes: 'Pacientes',
+    consultas: 'Consultas',
+    hospitalizacion: 'Hospitalización',
+    seguimientos: 'Seguimientos',
+    examenes: 'Exámenes',
+    formulacion: 'Formulación',
+    historias: 'Exportar Historia Clínica'
+  };
+  document.getElementById('topbarTitle').textContent = titles[page] || page;
+  document.getElementById('topbarActions').innerHTML = '';
+  pages[page]();
+  closeSidebar();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('backdrop').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('backdrop').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════
+function showModal(type, data) {
+  const c = document.getElementById('modalContainer');
+  c.innerHTML = modalTemplates[type](data || {});
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modalContainer').innerHTML = '';
+  document.body.style.overflow = '';
+}
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+const SPECIES_EMOJI = { Perro: '🐶', Gato: '🐱', Ave: '🦜', Conejo: '🐰', Reptil: '🦎', Otro: '🐾' };
+
+function speciesIcon(s) { return SPECIES_EMOJI[s] || '🐾'; }
+
+function formatDate(str) {
+  if (!str) return '—';
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function formatDatetime(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+}
+
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function getPropietario(id) { return DB.get('propietarios').find(p => p.id === id) || {}; }
+function getPaciente(id) { return DB.get('pacientes').find(p => p.id === id) || {}; }
+
+function getPropietarioByPaciente(pacId) {
+  const props = DB.get('propietarios');
+  return props.find(p => (p.mascotas || []).includes(pacId)) || {};
+}
+
+function getPacientesOf(propId) {
+  const prop = getPropietario(propId);
+  const all = DB.get('pacientes');
+  return all.filter(p => (prop.mascotas || []).includes(p.id));
+}
+
+function getRegistrosOf(pacienteId) {
+  const consultas = DB.get('consultas').filter(r => r.pacienteId === pacienteId);
+  const hosps = DB.get('hospitalizaciones').filter(r => r.pacienteId === pacienteId);
+  const segs = DB.get('seguimientos').filter(r => r.pacienteId === pacienteId);
+  const exs = DB.get('examenes').filter(r => r.pacienteId === pacienteId);
+  const forms = DB.get('formulaciones').filter(r => r.pacienteId === pacienteId);
+  return [...consultas, ...hosps, ...segs, ...exs, ...forms].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+}
+
+const TIPO_LABELS = {
+  consulta: { label: 'Consulta', color: 'badge-blue', icon: '🩺' },
+  hospitalizacion: { label: 'Hospitalización', color: 'badge-red', icon: '🏥' },
+  seguimiento: { label: 'Seguimiento', color: 'badge-warn', icon: '📅' },
+  examen: { label: 'Examen', color: 'badge-green', icon: '🔬' },
+  formulacion: { label: 'Formulación', color: 'badge-gray', icon: '💊' }
+};
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+// ═══════════════════════════════════════════
+// PAGES
+// ═══════════════════════════════════════════
+const pages = {};
+
+// ── DASHBOARD ──
+pages.dashboard = function() {
+  const pacientes = DB.get('pacientes');
+  const propietarios = DB.get('propietarios');
+  const consultas = DB.get('consultas');
+  const hoy = today();
+  const consultasHoy = consultas.filter(c => c.fecha === hoy);
+  const hosps = DB.get('hospitalizaciones').filter(h => h.estado === 'activa');
+
+  const recientes = [...DB.get('consultas'), ...DB.get('hospitalizaciones'), ...DB.get('examenes')]
+    .sort((a, b) => new Date(b.creadoEn || b.fecha) - new Date(a.creadoEn || a.fecha))
+    .slice(0, 5);
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid-4" style="margin-bottom:20px">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--blue-pale)">🐶</div>
+        <div class="stat-label">Pacientes</div>
+        <div class="stat-value">${pacientes.length}</div>
+        <div class="stat-sub">registrados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#e8fdf2">👤</div>
+        <div class="stat-label">Propietarios</div>
+        <div class="stat-value">${propietarios.length}</div>
+        <div class="stat-sub">en sistema</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--warn-bg)">🩺</div>
+        <div class="stat-label">Consultas hoy</div>
+        <div class="stat-value">${consultasHoy.length}</div>
+        <div class="stat-sub">${hoy}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--danger-bg)">🏥</div>
+        <div class="stat-label">Hospitalizados</div>
+        <div class="stat-value">${hosps.length}</div>
+        <div class="stat-sub">activos</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Actividad reciente</span>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('consultas')">Ver todo</button>
+        </div>
+        ${recientes.length === 0 ? `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-sub">Sin registros aún</div></div>` :
+        recientes.map(r => {
+          const pac = getPaciente(r.pacienteId);
+          const tipo = TIPO_LABELS[r.tipo] || { label: r.tipo, color: 'badge-gray', icon: '📄' };
+          return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+            <div class="pet-avatar">${speciesIcon(pac.especie)}</div>
+            <div style="flex:1">
+              <div style="font-size:13.5px;font-weight:600;color:var(--navy)">${pac.nombre || '—'}</div>
+              <div style="font-size:12px;color:var(--gray-500)">${formatDate(r.fecha)} · ${r.motivo || r.diagnostico || r.tipo}</div>
+            </div>
+            <span class="badge ${tipo.color}">${tipo.icon} ${tipo.label}</span>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Accesos rápidos</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          ${[
+            ['➕ Nueva consulta', "showModal('consulta')"],
+            ['👤 Nuevo propietario', "showModal('propietario')"],
+            ['🐶 Nuevo paciente', "showModal('paciente')"],
+            ['🔬 Nuevo examen', "showModal('examen')"],
+            ['💊 Formulación', "showModal('formulacion')"],
+            ['📋 Exportar historia', "navigate('historias')"]
+          ].map(([t, a]) => `<button class="btn btn-outline" style="justify-content:flex-start" onclick="${a}">${t}</button>`).join('')}
+        </div>
+        ${hosps.length > 0 ? `
+        <div class="section-divider">Hospitalizados activos</div>
+        ${hosps.slice(0,3).map(h => {
+          const pac = getPaciente(h.pacienteId);
+          return `<div class="patient-mini-card" style="margin-bottom:6px" onclick="navigate('hospitalizacion')">
+            <div class="pet-avatar">${speciesIcon(pac.especie)}</div>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:13.5px">${pac.nombre || '—'}</div>
+              <div style="font-size:12px;color:var(--gray-500)">Desde ${formatDate(h.fechaIngreso)}</div>
+            </div>
+            <span class="badge badge-red">🏥 Activo</span>
+          </div>`;
+        }).join('')}` : ''}
+      </div>
+    </div>
+  `;
+};
+
+// ── PROPIETARIOS ──
+pages.propietarios = function(query = '') {
+  const topActions = document.getElementById('topbarActions');
+  topActions.innerHTML = `<button class="btn btn-navy" onclick="showModal('propietario')">+ Propietario</button>`;
+
+  let list = DB.get('propietarios');
+  if (query) list = list.filter(p =>
+    p.nombre.toLowerCase().includes(query.toLowerCase()) ||
+    (p.documento || '').includes(query) ||
+    (p.telefono || '').includes(query)
+  );
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="search-wrap" style="flex:1;min-width:200px">
+          <span class="search-icon">🔍</span>
+          <input class="form-input search-input" placeholder="Buscar propietario…" value="${query}"
+            oninput="pages.propietarios(this.value)">
+        </div>
+        <button class="btn btn-navy" onclick="showModal('propietario')">+ Nuevo propietario</button>
+      </div>
+
+      ${list.length === 0 ? `<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-title">Sin propietarios</div><div class="empty-sub">Registra el primer propietario</div></div>` : `
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Nombre</th><th>Documento</th><th>Teléfono</th>
+            <th>Correo</th><th>Mascotas</th><th>Acciones</th>
+          </tr></thead>
+          <tbody>
+            ${list.map(p => {
+              const mascotas = getPacientesOf(p.id);
+              return `<tr>
+                <td><div style="display:flex;align-items:center;gap:10px">
+                  <div class="avatar avatar-blue">${(p.nombre||'?').charAt(0).toUpperCase()}</div>
+                  <div><div style="font-weight:600">${p.nombre}</div><div style="font-size:11.5px;color:var(--gray-500)">${p.ciudad||''}</div></div>
+                </div></td>
+                <td>${p.documento || '—'}</td>
+                <td>${p.telefono || '—'}</td>
+                <td>${p.correo || '—'}</td>
+                <td><div style="display:flex;gap:4px;flex-wrap:wrap">
+                  ${mascotas.slice(0,3).map(m => `<span title="${m.nombre}" style="font-size:18px">${speciesIcon(m.especie)}</span>`).join('')}
+                  ${mascotas.length > 3 ? `<span class="badge badge-gray">+${mascotas.length-3}</span>` : ''}
+                  ${mascotas.length === 0 ? '<span style="color:var(--gray-300);font-size:12px">—</span>' : ''}
+                </div></td>
+                <td><div style="display:flex;gap:6px">
+                  <button class="btn btn-ghost btn-sm" onclick="verPropietario('${p.id}')">Ver</button>
+                  <button class="btn btn-ghost btn-sm" onclick="showModal('editPropietario', DB.get('propietarios').find(x=>x.id==='${p.id}'))">✏️</button>
+                  <button class="btn btn-danger btn-sm" onclick="eliminar('propietarios','${p.id}')">🗑</button>
+                </div></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`}
+    </div>
+  `;
+};
+
+function verPropietario(id) {
+  const p = getPropietario(id);
+  const mascotas = getPacientesOf(id);
+  showModal('verPropietario', { propietario: p, mascotas });
+}
+
+// ── PACIENTES ──
+pages.pacientes = function(query = '') {
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-navy" onclick="showModal('paciente')">+ Paciente</button>`;
+
+  let list = DB.get('pacientes');
+  if (query) list = list.filter(p =>
+    p.nombre.toLowerCase().includes(query.toLowerCase()) ||
+    (p.especie || '').toLowerCase().includes(query.toLowerCase()) ||
+    (p.raza || '').toLowerCase().includes(query.toLowerCase())
+  );
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="search-wrap" style="flex:1;min-width:200px">
+          <span class="search-icon">🔍</span>
+          <input class="form-input search-input" placeholder="Buscar paciente…" value="${query}"
+            oninput="pages.pacientes(this.value)">
+        </div>
+        <button class="btn btn-navy" onclick="showModal('paciente')">+ Nuevo paciente</button>
+      </div>
+
+      ${list.length === 0 ? `<div class="empty-state"><div class="empty-icon">🐶</div><div class="empty-title">Sin pacientes</div><div class="empty-sub">Registra el primer paciente</div></div>` : `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+        ${list.map(pac => {
+          const prop = getPropietarioByPaciente(pac.id);
+          const registros = getRegistrosOf(pac.id);
+          return `<div class="patient-mini-card" style="flex-direction:column;align-items:flex-start;cursor:default">
+            <div style="display:flex;align-items:center;gap:10px;width:100%">
+              <div class="pet-avatar" style="width:44px;height:44px;font-size:22px">${speciesIcon(pac.especie)}</div>
+              <div style="flex:1">
+                <div style="font-size:15px;font-weight:700;color:var(--navy)">${pac.nombre}</div>
+                <div style="font-size:12px;color:var(--gray-500)">${pac.especie} · ${pac.raza || '—'}</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="verPaciente('${pac.id}')">Ver</button>
+            </div>
+            <div style="margin-top:10px;width:100%;padding-top:10px;border-top:1px solid var(--gray-100)">
+              <div class="info-row">👤 ${prop.nombre || 'Sin propietario'}</div>
+              <div class="info-row">📅 Nac: ${formatDate(pac.fechaNacimiento)}</div>
+              <div class="info-row">📋 ${registros.length} registro(s)</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`}
+    </div>
+  `;
+};
+
+function verPaciente(id) {
+  const pac = getPaciente(id);
+  const prop = getPropietarioByPaciente(id);
+  const registros = getRegistrosOf(id);
+  showModal('verPaciente', { paciente: pac, propietario: prop, registros });
+}
+
+// ── CONSULTAS ──
+pages.consultas = function() {
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-navy" onclick="showModal('consulta')">+ Consulta</button>`;
+  const list = DB.get('consultas').sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+  renderRegistros('consultas', list, 'consulta');
+};
+
+// ── HOSPITALIZACION ──
+pages.hospitalizacion = function() {
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-navy" onclick="showModal('hospitalizacion')">+ Hospitalización</button>`;
+  const list = DB.get('hospitalizaciones').sort((a,b) => new Date(b.fechaIngreso) - new Date(a.fechaIngreso));
+  renderRegistros('hospitalizaciones', list, 'hospitalizacion');
+};
+
+// ── SEGUIMIENTOS ──
+pages.seguimientos = function() {
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-navy" onclick="showModal('seguimiento')">+ Seguimiento</button>`;
+  const list = DB.get('seguimientos').sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+  renderRegistros('seguimientos', list, 'seguimiento');
+};
+
+// ── EXAMENES ──
+pages.examenes = function() {
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-navy" onclick="showModal('examen')">+ Examen</button>`;
+  const list = DB.get('examenes').sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+  renderRegistros('examenes', list, 'examen');
+};
+
+// ── FORMULACION ──
+pages.formulacion = function() {
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-navy" onclick="showModal('formulacion')">+ Formulación</button>`;
+  const list = DB.get('formulaciones').sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+  renderRegistros('formulaciones', list, 'formulacion');
+};
+
+function renderRegistros(store, list, tipo) {
+  const tipo_info = {
+    consulta: { label: 'Consulta', icon: '🩺', campo: 'motivo' },
+    hospitalizacion: { label: 'Hospitalización', icon: '🏥', campo: 'diagnostico' },
+    seguimiento: { label: 'Seguimiento', icon: '📅', campo: 'observaciones' },
+    examen: { label: 'Examen', icon: '🔬', campo: 'tipoExamen' },
+    formulacion: { label: 'Formulación', icon: '💊', campo: 'medicamento' }
+  }[tipo];
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      ${list.length === 0 ? `<div class="empty-state"><div class="empty-icon">${tipo_info.icon}</div><div class="empty-title">Sin registros</div><div class="empty-sub">Agrega el primer registro</div></div>` : `
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Fecha</th><th>Paciente</th><th>Propietario</th>
+            <th>${tipo_info.campo === 'motivo' ? 'Motivo' : tipo_info.campo === 'diagnostico' ? 'Diagnóstico' : tipo_info.campo === 'tipoExamen' ? 'Tipo examen' : tipo_info.campo === 'medicamento' ? 'Medicamento' : 'Observaciones'}</th>
+            <th>Adjuntos</th><th>Acciones</th>
+          </tr></thead>
+          <tbody>
+            ${list.map(r => {
+              const pac = getPaciente(r.pacienteId);
+              const prop = getPropietarioByPaciente(r.pacienteId);
+              const campo = r[tipo_info.campo] || r.motivo || r.diagnostico || r.observaciones || '—';
+              return `<tr>
+                <td>${formatDate(r.fecha || r.fechaIngreso)}</td>
+                <td><div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:18px">${speciesIcon(pac.especie)}</span>
+                  <span style="font-weight:500">${pac.nombre || '—'}</span>
+                </div></td>
+                <td>${prop.nombre || '—'}</td>
+                <td style="max-width:200px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${campo}</div></td>
+                <td>${(r.archivos||[]).length > 0 ? `<span class="badge badge-blue">📎 ${r.archivos.length}</span>` : '<span style="color:var(--gray-300)">—</span>'}</td>
+                <td><div style="display:flex;gap:6px">
+                  <button class="btn btn-ghost btn-sm" onclick="verRegistro('${store}','${r.id}')">Ver</button>
+                  <button class="btn btn-danger btn-sm" onclick="eliminar('${store}','${r.id}')">🗑</button>
+                </div></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`}
+    </div>
+  `;
+}
+
+function verRegistro(store, id) {
+  const list = DB.get(store);
+  const r = list.find(x => x.id === id);
+  if (!r) return;
+  showModal('verRegistro', { registro: r, store });
+}
+
+// ── HISTORIAS ──
+pages.historias = function() {
+  const pacientes = DB.get('pacientes');
+  const propietarios = DB.get('propietarios');
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Exportar por paciente</div>
+        <div class="form-group">
+          <label class="form-label">Buscar paciente</label>
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input class="form-input search-input" id="searchHist" placeholder="Nombre del paciente…" oninput="filterHistoriaSearch(this.value)">
+          </div>
+        </div>
+        <div id="historiasList" style="max-height:400px;overflow-y:auto">
+          ${pacientes.map(pac => {
+            const prop = getPropietarioByPaciente(pac.id);
+            const regs = getRegistrosOf(pac.id);
+            return `<div class="patient-mini-card hist-pac" data-search="${pac.nombre.toLowerCase()} ${(prop.nombre||'').toLowerCase()}" style="margin-bottom:8px">
+              <div class="pet-avatar">${speciesIcon(pac.especie)}</div>
+              <div style="flex:1">
+                <div style="font-weight:600;font-size:13.5px">${pac.nombre}</div>
+                <div style="font-size:12px;color:var(--gray-500)">${prop.nombre||'—'} · ${regs.length} registro(s)</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="exportarHistoria('${pac.id}')">📄 PDF</button>
+            </div>`;
+          }).join('')}
+          ${pacientes.length === 0 ? '<div class="empty-state"><div class="empty-icon">🐶</div><div class="empty-sub">Sin pacientes registrados</div></div>' : ''}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Exportar por propietario</div>
+        <div style="max-height:500px;overflow-y:auto">
+          ${propietarios.map(prop => {
+            const mascotas = getPacientesOf(prop.id);
+            return `<div class="patient-mini-card" style="margin-bottom:8px;flex-direction:column;align-items:flex-start;cursor:default">
+              <div style="display:flex;align-items:center;gap:10px;width:100%">
+                <div class="avatar avatar-blue">${(prop.nombre||'?').charAt(0)}</div>
+                <div style="flex:1">
+                  <div style="font-weight:600">${prop.nombre}</div>
+                  <div style="font-size:12px;color:var(--gray-500)">${mascotas.length} mascota(s)</div>
+                </div>
+              </div>
+              ${mascotas.length > 0 ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--gray-100);width:100%;display:flex;gap:6px;flex-wrap:wrap">
+                ${mascotas.map(m => `<button class="btn btn-outline btn-sm" onclick="exportarHistoria('${m.id}')">
+                  ${speciesIcon(m.especie)} ${m.nombre}
+                </button>`).join('')}
+              </div>` : ''}
+            </div>`;
+          }).join('')}
+          ${propietarios.length === 0 ? '<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-sub">Sin propietarios</div></div>' : ''}
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+function filterHistoriaSearch(q) {
+  document.querySelectorAll('.hist-pac').forEach(el => {
+    el.style.display = el.dataset.search.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+// ═══════════════════════════════════════════
+// MODAL TEMPLATES
+// ═══════════════════════════════════════════
+const modalTemplates = {};
+
+// Drive setup
+modalTemplates.driveSetup = () => `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🔗 Conectar Google Drive</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--gray-700);margin-bottom:16px;font-size:13.5px">Para sincronizar tus datos en la nube necesitas configurar tu proyecto de Google Cloud:</p>
+      <ol style="color:var(--gray-700);font-size:13px;padding-left:16px;line-height:2">
+        <li>Ve a <a href="https://console.cloud.google.com" target="_blank" style="color:var(--blue)">console.cloud.google.com</a></li>
+        <li>Crea un proyecto → Habilita Google Drive API</li>
+        <li>Credenciales → OAuth 2.0 Client ID → Web Application</li>
+        <li>Autorized redirect URIs: agrega esta URL: <code style="background:var(--gray-100);padding:2px 6px;border-radius:4px;font-size:12px">${window.location.href.split('?')[0]}</code></li>
+        <li>Copia el Client ID y pégalo abajo</li>
+      </ol>
+      <div class="form-group" style="margin-top:16px">
+        <label class="form-label">Client ID de Google OAuth</label>
+        <input class="form-input" id="clientIdInput" placeholder="xxxx.apps.googleusercontent.com"
+          value="${localStorage.getItem('vc_drive_client_id')||''}">
+      </div>
+      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">💡 Mientras tanto, todos tus datos se guardan localmente en este navegador de forma automática. No perderás nada.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveDriveClient()">Guardar y conectar</button>
+    </div>
+  </div>
+</div>`;
+
+function saveDriveClient() {
+  const val = document.getElementById('clientIdInput').value.trim();
+  if (!val) return;
+  localStorage.setItem('vc_drive_client_id', val);
+  closeModal();
+  connectDrive();
+}
+
+// Propietario
+modalTemplates.propietario = () => buildPropietarioModal(null, false);
+modalTemplates.editPropietario = (data) => buildPropietarioModal(data, true);
+
+function buildPropietarioModal(data, isEdit) {
+  const d = data || {};
+  return `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">${isEdit ? '✏️ Editar' : '➕ Nuevo'} Propietario</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nombre completo <span class="req">*</span></label>
+          <input class="form-input" id="f_nombre" value="${d.nombre||''}" placeholder="Juan Pérez">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Documento</label>
+          <input class="form-input" id="f_documento" value="${d.documento||''}" placeholder="CC 12345678">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Teléfono</label>
+          <input class="form-input" id="f_telefono" value="${d.telefono||''}" placeholder="300 000 0000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">WhatsApp</label>
+          <input class="form-input" id="f_whatsapp" value="${d.whatsapp||''}" placeholder="300 000 0000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Correo electrónico</label>
+          <input class="form-input" id="f_correo" type="email" value="${d.correo||''}" placeholder="correo@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ciudad</label>
+          <input class="form-input" id="f_ciudad" value="${d.ciudad||'Medellín'}" placeholder="Medellín">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dirección</label>
+        <input class="form-input" id="f_direccion" value="${d.direccion||''}" placeholder="Calle 50 #40-20">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observaciones</label>
+        <textarea class="form-textarea" id="f_obs">${d.observaciones||''}</textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPropietario(${isEdit ? `'${d.id}'` : 'null'})">Guardar</button>
+    </div>
+  </div>
+</div>`;
+}
+
+function guardarPropietario(id) {
+  const nombre = document.getElementById('f_nombre').value.trim();
+  if (!nombre) { alert('El nombre es obligatorio'); return; }
+  const list = DB.get('propietarios');
+  const obj = {
+    id: id || DB.generateId(),
+    nombre,
+    documento: document.getElementById('f_documento').value.trim(),
+    telefono: document.getElementById('f_telefono').value.trim(),
+    whatsapp: document.getElementById('f_whatsapp').value.trim(),
+    correo: document.getElementById('f_correo').value.trim(),
+    ciudad: document.getElementById('f_ciudad').value.trim(),
+    direccion: document.getElementById('f_direccion').value.trim(),
+    observaciones: document.getElementById('f_obs').value.trim(),
+    creadoEn: id ? (list.find(x=>x.id===id)||{}).creadoEn : new Date().toISOString(),
+    mascotas: id ? ((list.find(x=>x.id===id)||{}).mascotas||[]) : []
+  };
+  if (id) {
+    const idx = list.findIndex(x=>x.id===id);
+    if (idx>=0) list[idx] = obj;
+  } else {
+    list.push(obj);
+  }
+  DB.set('propietarios', list);
+  closeModal();
+  pages.propietarios();
+}
+
+// Ver propietario
+modalTemplates.verPropietario = ({ propietario: p, mascotas }) => `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">👤 ${p.nombre}</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2" style="margin-bottom:20px">
+        <div>
+          ${p.telefono ? `<div class="info-row">📞 ${p.telefono}</div>` : ''}
+          ${p.whatsapp ? `<div class="info-row">💬 WhatsApp: ${p.whatsapp}</div>` : ''}
+          ${p.correo ? `<div class="info-row">✉️ ${p.correo}</div>` : ''}
+          ${p.documento ? `<div class="info-row">🪪 ${p.documento}</div>` : ''}
+          ${p.ciudad ? `<div class="info-row">📍 ${p.ciudad}${p.direccion ? ' · '+p.direccion : ''}</div>` : ''}
+          ${p.observaciones ? `<div style="margin-top:10px;padding:10px;background:var(--gray-50);border-radius:6px;font-size:13px;color:var(--gray-700)">${p.observaciones}</div>` : ''}
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:13px;color:var(--navy);margin-bottom:8px">Mascotas (${mascotas.length})</div>
+          ${mascotas.map(m => `<div class="patient-mini-card" style="margin-bottom:8px;cursor:pointer" onclick="closeModal();verPaciente('${m.id}')">
+            <div class="pet-avatar">${speciesIcon(m.especie)}</div>
+            <div style="flex:1">
+              <div style="font-weight:600">${m.nombre}</div>
+              <div style="font-size:12px;color:var(--gray-500)">${m.especie} · ${m.raza||'—'}</div>
+            </div>
+            <span style="font-size:12px;color:var(--blue)">Ver →</span>
+          </div>`).join('')}
+          <button class="btn btn-outline" style="width:100%;margin-top:6px" onclick="closeModal();showModal('paciente',{propietarioId:'${p.id}'})">+ Agregar mascota</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>
+      <button class="btn btn-primary" onclick="closeModal();showModal('editPropietario', DB.get('propietarios').find(x=>x.id==='${p.id}'))">✏️ Editar</button>
+    </div>
+  </div>
+</div>`;
+
+// Paciente
+modalTemplates.paciente = (data) => buildPacienteModal(data, false);
+
+function buildPacienteModal(data, isEdit) {
+  const d = data || {};
+  const propietarios = DB.get('propietarios');
+  return `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">${isEdit ? '✏️ Editar' : '➕ Nuevo'} Paciente</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="req">*</span></label>
+          <input class="form-input" id="fp_nombre" value="${d.nombre||''}" placeholder="Nombre de la mascota">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Propietario <span class="req">*</span></label>
+          <select class="form-select" id="fp_propietario">
+            <option value="">Seleccionar…</option>
+            ${propietarios.map(p => `<option value="${p.id}" ${(d.propietarioId||data?.propietarioId)===p.id?'selected':''}>${p.nombre}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Especie</label>
+          <select class="form-select" id="fp_especie">
+            ${['Perro','Gato','Ave','Conejo','Reptil','Otro'].map(e=>`<option value="${e}" ${d.especie===e?'selected':''}>${e}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Raza</label>
+          <input class="form-input" id="fp_raza" value="${d.raza||''}" placeholder="Ej: Labrador">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sexo</label>
+          <select class="form-select" id="fp_sexo">
+            <option value="">—</option>
+            ${['Macho','Hembra'].map(s=>`<option value="${s}" ${d.sexo===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fecha de nacimiento</label>
+          <input class="form-input" type="date" id="fp_fechaNac" value="${d.fechaNacimiento||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color / Pelaje</label>
+          <input class="form-input" id="fp_color" value="${d.color||''}" placeholder="Ej: Negro con blanco">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Microchip</label>
+          <input class="form-input" id="fp_chip" value="${d.microchip||''}" placeholder="N° microchip">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado reproductivo</label>
+          <select class="form-select" id="fp_repro">
+            ${['No especificado','Entero','Castrado/Esterilizado'].map(s=>`<option value="${s}" ${d.estadoReproductivo===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Antecedentes / Observaciones</label>
+        <textarea class="form-textarea" id="fp_antecedentes">${d.antecedentes||''}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Alergias conocidas</label>
+        <input class="form-input" id="fp_alergias" value="${d.alergias||''}" placeholder="Ej: Penicilina">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPaciente(${isEdit?`'${d.id}'`:'null'})">Guardar</button>
+    </div>
+  </div>
+</div>`;
+}
+
+function guardarPaciente(id) {
+  const nombre = document.getElementById('fp_nombre').value.trim();
+  const propId = document.getElementById('fp_propietario').value;
+  if (!nombre) { alert('El nombre es obligatorio'); return; }
+  if (!propId) { alert('Selecciona un propietario'); return; }
+
+  const list = DB.get('pacientes');
+  const pacId = id || DB.generateId();
+  const obj = {
+    id: pacId, nombre, propietarioId: propId,
+    especie: document.getElementById('fp_especie').value,
+    raza: document.getElementById('fp_raza').value.trim(),
+    sexo: document.getElementById('fp_sexo').value,
+    fechaNacimiento: document.getElementById('fp_fechaNac').value,
+    color: document.getElementById('fp_color').value.trim(),
+    microchip: document.getElementById('fp_chip').value.trim(),
+    estadoReproductivo: document.getElementById('fp_repro').value,
+    antecedentes: document.getElementById('fp_antecedentes').value.trim(),
+    alergias: document.getElementById('fp_alergias').value.trim(),
+    creadoEn: id ? (list.find(x=>x.id===id)||{}).creadoEn : new Date().toISOString()
+  };
+  if (id) {
+    const idx = list.findIndex(x=>x.id===id);
+    if (idx>=0) list[idx] = obj;
+  } else {
+    list.push(obj);
+  }
+  DB.set('pacientes', list);
+
+  // Asociar al propietario
+  const props = DB.get('propietarios');
+  const pIdx = props.findIndex(p=>p.id===propId);
+  if (pIdx>=0) {
+    if (!props[pIdx].mascotas) props[pIdx].mascotas = [];
+    if (!props[pIdx].mascotas.includes(pacId)) props[pIdx].mascotas.push(pacId);
+    DB.set('propietarios', props);
+  }
+
+  closeModal();
+  pages.pacientes();
+}
+
+// Ver paciente
+modalTemplates.verPaciente = ({ paciente: p, propietario: prop, registros }) => `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">${speciesIcon(p.especie)} ${p.nombre}</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2" style="margin-bottom:20px">
+        <div>
+          <div class="section-divider">Datos del paciente</div>
+          ${[
+            ['Especie', p.especie], ['Raza', p.raza], ['Sexo', p.sexo],
+            ['Fecha nacimiento', formatDate(p.fechaNacimiento)],
+            ['Color', p.color], ['Microchip', p.microchip],
+            ['Estado reproductivo', p.estadoReproductivo]
+          ].filter(([,v])=>v).map(([l,v])=>`<div class="info-row">• <strong>${l}:</strong> ${v}</div>`).join('')}
+          ${p.alergias ? `<div style="margin-top:8px;padding:8px;background:var(--danger-bg);border-radius:6px;font-size:12.5px;color:var(--danger)">⚠️ Alergias: ${p.alergias}</div>` : ''}
+          ${p.antecedentes ? `<div style="margin-top:8px;padding:8px;background:var(--gray-50);border-radius:6px;font-size:12.5px">${p.antecedentes}</div>` : ''}
+          <div class="section-divider" style="margin-top:16px">Propietario</div>
+          ${prop.nombre ? `<div class="info-row">👤 ${prop.nombre}</div>
+          ${prop.telefono ? `<div class="info-row">📞 ${prop.telefono}</div>` : ''}` : '<span style="color:var(--gray-400)">No asignado</span>'}
+        </div>
+        <div>
+          <div class="section-divider">Historial (${registros.length})</div>
+          <div style="max-height:320px;overflow-y:auto">
+            ${registros.length === 0 ? '<div class="empty-state" style="padding:24px"><div class="empty-icon">📋</div><div class="empty-sub">Sin registros</div></div>' :
+            `<div class="timeline">
+              ${registros.map(r => {
+                const t = TIPO_LABELS[r.tipo] || { label: r.tipo, icon: '📄', color: 'badge-gray' };
+                const desc = r.motivo || r.diagnostico || r.observaciones || r.tipoExamen || r.medicamento || '—';
+                return `<div class="timeline-item">
+                  <div class="timeline-dot"></div>
+                  <div class="timeline-card">
+                    <div class="timeline-meta">${formatDate(r.fecha||r.fechaIngreso)} · <span class="badge ${t.color}" style="font-size:10px">${t.icon} ${t.label}</span></div>
+                    <div style="font-size:13px;color:var(--gray-700)">${desc}</div>
+                    ${(r.archivos||[]).length > 0 ? `<div style="margin-top:6px;font-size:11.5px;color:var(--blue)">📎 ${r.archivos.length} adjunto(s)</div>` : ''}
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>`}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>
+      <button class="btn btn-outline" onclick="closeModal();exportarHistoria('${p.id}')">📄 Exportar Historia</button>
+      <button class="btn btn-primary" onclick="closeModal();showModal('consulta',{pacienteId:'${p.id}'})">+ Consulta</button>
+    </div>
+  </div>
+</div>`;
+
+// Consulta modal
+modalTemplates.consulta = (data) => buildConsultaModal(data || {});
+function buildConsultaModal(d) {
+  const pacientes = DB.get('pacientes');
+  return `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">🩺 Nueva Consulta</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Paciente <span class="req">*</span></label>
+          <select class="form-select" id="c_paciente">
+            <option value="">Seleccionar…</option>
+            ${pacientes.map(p=>`<option value="${p.id}" ${d.pacienteId===p.id?'selected':''}>${p.nombre} (${p.especie})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha <span class="req">*</span></label>
+          <input class="form-input" type="date" id="c_fecha" value="${d.fecha||today()}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Motivo de consulta <span class="req">*</span></label>
+        <input class="form-input" id="c_motivo" value="${d.motivo||''}" placeholder="Motivo principal de la visita">
+      </div>
+      <div class="section-divider">Signos vitales</div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Peso (kg)</label>
+          <input class="form-input" type="number" step="0.1" id="c_peso" value="${d.peso||''}" placeholder="0.0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Temperatura (°C)</label>
+          <input class="form-input" type="number" step="0.1" id="c_temp" value="${d.temperatura||''}" placeholder="38.5">
+        </div>
+        <div class="form-group">
+          <label class="form-label">FC (lpm)</label>
+          <input class="form-input" type="number" id="c_fc" value="${d.fc||''}" placeholder="80">
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">FR (rpm)</label>
+          <input class="form-input" type="number" id="c_fr" value="${d.fr||''}" placeholder="20">
+        </div>
+        <div class="form-group">
+          <label class="form-label">TLL (seg)</label>
+          <input class="form-input" type="number" step="0.5" id="c_tll" value="${d.tll||''}" placeholder="2">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mucosas</label>
+          <select class="form-select" id="c_mucosas">
+            <option value="">—</option>
+            ${['Rosadas','Pálidas','Cianóticas','Ictéricas','Congestionadas'].map(m=>`<option ${d.mucosas===m?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Examen físico</label>
+        <textarea class="form-textarea" id="c_exfisico" rows="3">${d.examenFisico||''}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Diagnóstico / Impresión diagnóstica</label>
+        <textarea class="form-textarea" id="c_diagnostico" rows="2">${d.diagnostico||''}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Plan terapéutico / Tratamiento</label>
+        <textarea class="form-textarea" id="c_tratamiento" rows="3">${d.tratamiento||''}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Recomendaciones al propietario</label>
+        <textarea class="form-textarea" id="c_recomendaciones">${d.recomendaciones||''}</textarea>
+      </div>
+      <div class="section-divider">Adjuntos</div>
+      <div id="c_archivos_list">${renderArchivos(d.archivos||[])}</div>
+      <div class="file-upload-area" id="c_dropzone" onclick="document.getElementById('c_fileInput').click()">
+        <div style="font-size:28px;margin-bottom:6px">📎</div>
+        <div style="font-size:13px;color:var(--gray-700);font-weight:500">Adjuntar archivos</div>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:4px">PDF, Word, imágenes — sin límite de archivos</div>
+        <input type="file" id="c_fileInput" style="display:none" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.webp" onchange="handleFileUpload('c','c_archivos_list',this.files)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarConsulta()">Guardar consulta</button>
+    </div>
+  </div>
+</div>`;
+}
+
+let tempArchivos = { c: [], h: [], s: [], e: [], f: [] };
+
+function renderArchivos(archivos) {
+  if (!archivos || archivos.length === 0) return '';
+  return archivos.map((a, i) => `
+    <div class="attachment-item">
+      <span class="attach-icon">${getFileIcon(a.type)}</span>
+      <div style="flex:1">
+        <div class="attach-name">${a.name}</div>
+        <div class="attach-size">${formatFileSize(a.size)}</div>
+      </div>
+      <a href="${a.data}" download="${a.name}" class="btn btn-ghost btn-sm">⬇</a>
+    </div>`).join('');
+}
+
+function getFileIcon(type) {
+  if (!type) return '📄';
+  if (type.includes('pdf')) return '📕';
+  if (type.includes('word') || type.includes('doc')) return '📘';
+  if (type.includes('image')) return '🖼️';
+  return '📄';
+}
+
+async function handleFileUpload(prefix, listId, files) {
+  if (!files || files.length === 0) return;
+  const arr = Array.from(files);
+  const listEl = document.getElementById(listId);
+
+  for (const file of arr) {
+    const base64 = await fileToBase64(file);
+    if (!tempArchivos[prefix]) tempArchivos[prefix] = [];
+    tempArchivos[prefix].push({ name: file.name, size: file.size, type: file.type, data: base64 });
+  }
+  listEl.innerHTML = renderArchivos(tempArchivos[prefix]);
+}
+
+function guardarConsulta() {
+  const pacId = document.getElementById('c_paciente').value;
+  const motivo = document.getElementById('c_motivo').value.trim();
+  if (!pacId) { alert('Selecciona un paciente'); return; }
+  if (!motivo) { alert('El motivo es obligatorio'); return; }
+  const list = DB.get('consultas');
+  list.push({
+    id: DB.generateId(), tipo: 'consulta',
+    pacienteId: pacId,
+    fecha: document.getElementById('c_fecha').value,
+    motivo, diagnostico: document.getElementById('c_diagnostico').value.trim(),
+    examenFisico: document.getElementById('c_exfisico').value.trim(),
+    tratamiento: document.getElementById('c_tratamiento').value.trim(),
+    recomendaciones: document.getElementById('c_recomendaciones').value.trim(),
+    peso: document.getElementById('c_peso').value,
+    temperatura: document.getElementById('c_temp').value,
+    fc: document.getElementById('c_fc').value,
+    fr: document.getElementById('c_fr').value,
+    tll: document.getElementById('c_tll').value,
+    mucosas: document.getElementById('c_mucosas').value,
+    archivos: tempArchivos.c || [],
+    creadoEn: new Date().toISOString()
+  });
+  DB.set('consultas', list);
+  tempArchivos.c = [];
+  closeModal();
+  pages.consultas();
+}
+
+// Hospitalización
+modalTemplates.hospitalizacion = (data) => {
+  const d = data || {};
+  const pacientes = DB.get('pacientes');
+  return `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">🏥 Nueva Hospitalización</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Paciente <span class="req">*</span></label>
+          <select class="form-select" id="h_paciente">
+            <option value="">Seleccionar…</option>
+            ${pacientes.map(p=>`<option value="${p.id}">${p.nombre} (${p.especie})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha ingreso</label>
+          <input class="form-input" type="date" id="h_fecha" value="${today()}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Diagnóstico de ingreso <span class="req">*</span></label>
+        <textarea class="form-textarea" id="h_diagnostico"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Motivo de hospitalización</label>
+        <textarea class="form-textarea" id="h_motivo"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Peso ingreso (kg)</label>
+          <input class="form-input" type="number" step="0.1" id="h_peso">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <select class="form-select" id="h_estado">
+            <option value="activa">Activo</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Plan de tratamiento intrahospitalario</label>
+        <textarea class="form-textarea" id="h_plan" rows="4"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Evolución / Notas</label>
+        <textarea class="form-textarea" id="h_evolucion" rows="3"></textarea>
+      </div>
+      <div class="section-divider">Adjuntos</div>
+      <div id="h_archivos_list"></div>
+      <div class="file-upload-area" onclick="document.getElementById('h_fileInput').click()">
+        <div style="font-size:28px">📎</div>
+        <div style="font-size:13px;color:var(--gray-700);font-weight:500;margin-top:4px">Adjuntar archivos</div>
+        <input type="file" id="h_fileInput" style="display:none" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif" onchange="handleFileUpload('h','h_archivos_list',this.files)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarHospitalizacion()">Guardar</button>
+    </div>
+  </div>
+</div>`;
+};
+
+function guardarHospitalizacion() {
+  const pacId = document.getElementById('h_paciente').value;
+  const diag = document.getElementById('h_diagnostico').value.trim();
+  if (!pacId || !diag) { alert('Paciente y diagnóstico son obligatorios'); return; }
+  const list = DB.get('hospitalizaciones');
+  list.push({
+    id: DB.generateId(), tipo: 'hospitalizacion', pacienteId: pacId,
+    fechaIngreso: document.getElementById('h_fecha').value,
+    fecha: document.getElementById('h_fecha').value,
+    diagnostico: diag,
+    motivo: document.getElementById('h_motivo').value.trim(),
+    peso: document.getElementById('h_peso').value,
+    estado: document.getElementById('h_estado').value,
+    planTratamiento: document.getElementById('h_plan').value.trim(),
+    evolucion: document.getElementById('h_evolucion').value.trim(),
+    archivos: tempArchivos.h || [],
+    creadoEn: new Date().toISOString()
+  });
+  DB.set('hospitalizaciones', list);
+  tempArchivos.h = [];
+  closeModal();
+  pages.hospitalizacion();
+}
+
+// Seguimiento
+modalTemplates.seguimiento = (data) => {
+  const d = data || {};
+  const pacientes = DB.get('pacientes');
+  return `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">📅 Nuevo Seguimiento</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Paciente <span class="req">*</span></label>
+          <select class="form-select" id="s_paciente">
+            <option value="">Seleccionar…</option>
+            ${pacientes.map(p=>`<option value="${p.id}">${p.nombre} (${p.especie})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input class="form-input" type="date" id="s_fecha" value="${today()}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo de seguimiento</label>
+        <div class="pill-select" id="s_tipo_pills">
+          ${['Control postoperatorio','Control post-tratamiento','Vacunación','Desparasitación','Control general','Otro'].map(t=>
+            `<div class="pill-opt" onclick="togglePill(this,'s_tipo')">${t}</div>`).join('')}
+          <input type="hidden" id="s_tipo" value="">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observaciones <span class="req">*</span></label>
+        <textarea class="form-textarea" id="s_obs" rows="4"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Próxima cita recomendada</label>
+        <input class="form-input" type="date" id="s_proxima">
+      </div>
+      <div class="section-divider">Adjuntos</div>
+      <div id="s_archivos_list"></div>
+      <div class="file-upload-area" onclick="document.getElementById('s_fileInput').click()">
+        <div style="font-size:28px">📎</div>
+        <div style="font-size:13px;color:var(--gray-700);margin-top:4px">Adjuntar archivos</div>
+        <input type="file" id="s_fileInput" style="display:none" multiple onchange="handleFileUpload('s','s_archivos_list',this.files)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarSeguimiento()">Guardar</button>
+    </div>
+  </div>
+</div>`;
+};
+
+function togglePill(el, hiddenId) {
+  el.classList.toggle('selected');
+  const vals = Array.from(el.closest('.pill-select').querySelectorAll('.pill-opt.selected')).map(e=>e.textContent);
+  document.getElementById(hiddenId).value = vals.join(', ');
+}
+
+function guardarSeguimiento() {
+  const pacId = document.getElementById('s_paciente').value;
+  const obs = document.getElementById('s_obs').value.trim();
+  if (!pacId || !obs) { alert('Paciente y observaciones son obligatorios'); return; }
+  const list = DB.get('seguimientos');
+  list.push({
+    id: DB.generateId(), tipo: 'seguimiento', pacienteId: pacId,
+    fecha: document.getElementById('s_fecha').value,
+    tipoSeguimiento: document.getElementById('s_tipo').value,
+    observaciones: obs,
+    proximaCita: document.getElementById('s_proxima').value,
+    archivos: tempArchivos.s || [],
+    creadoEn: new Date().toISOString()
+  });
+  DB.set('seguimientos', list);
+  tempArchivos.s = [];
+  closeModal();
+  pages.seguimientos();
+}
+
+// Examen
+modalTemplates.examen = (data) => {
+  const d = data || {};
+  const pacientes = DB.get('pacientes');
+  return `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">🔬 Nuevo Examen</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Paciente <span class="req">*</span></label>
+          <select class="form-select" id="e_paciente">
+            <option value="">Seleccionar…</option>
+            ${pacientes.map(p=>`<option value="${p.id}">${p.nombre} (${p.especie})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input class="form-input" type="date" id="e_fecha" value="${today()}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo de examen</label>
+        <div class="pill-select">
+          ${['Hemograma','Química sanguínea','Uroanálisis','Coprológico','Ecografía','Radiografía','Ecocardiografía','Citología','Biopsia','Cultivo','Otro'].map(t=>
+            `<div class="pill-opt" onclick="togglePill(this,'e_tipo')">${t}</div>`).join('')}
+          <input type="hidden" id="e_tipo" value="">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nombre/descripción del examen</label>
+        <input class="form-input" id="e_nombre" placeholder="Ej: Hemograma completo + Química 10 parámetros">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Resultados / Interpretación</label>
+        <textarea class="form-textarea" id="e_resultados" rows="5" placeholder="Describe los hallazgos y valores relevantes..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Laboratorio / Institución</label>
+        <input class="form-input" id="e_lab" placeholder="Nombre del laboratorio o clínica">
+      </div>
+      <div class="section-divider">Archivos del examen (PDF, imágenes, etc.)</div>
+      <div id="e_archivos_list"></div>
+      <div class="file-upload-area" onclick="document.getElementById('e_fileInput').click()">
+        <div style="font-size:28px">📎</div>
+        <div style="font-size:13px;color:var(--gray-700);font-weight:500;margin-top:4px">Subir resultados de laboratorio</div>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:2px">PDF, imágenes de ecografía, radiografías…</div>
+        <input type="file" id="e_fileInput" style="display:none" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.webp,.dcm" onchange="handleFileUpload('e','e_archivos_list',this.files)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarExamen()">Guardar</button>
+    </div>
+  </div>
+</div>`;
+};
+
+function guardarExamen() {
+  const pacId = document.getElementById('e_paciente').value;
+  if (!pacId) { alert('Selecciona un paciente'); return; }
+  const list = DB.get('examenes');
+  list.push({
+    id: DB.generateId(), tipo: 'examen', pacienteId: pacId,
+    fecha: document.getElementById('e_fecha').value,
+    tipoExamen: document.getElementById('e_tipo').value || document.getElementById('e_nombre').value,
+    nombre: document.getElementById('e_nombre').value.trim(),
+    resultados: document.getElementById('e_resultados').value.trim(),
+    laboratorio: document.getElementById('e_lab').value.trim(),
+    archivos: tempArchivos.e || [],
+    creadoEn: new Date().toISOString()
+  });
+  DB.set('examenes', list);
+  tempArchivos.e = [];
+  closeModal();
+  pages.examenes();
+}
+
+// Formulación
+modalTemplates.formulacion = (data) => {
+  const d = data || {};
+  const pacientes = DB.get('pacientes');
+  return `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">💊 Nueva Formulación</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Paciente <span class="req">*</span></label>
+          <select class="form-select" id="f2_paciente">
+            <option value="">Seleccionar…</option>
+            ${pacientes.map(p=>`<option value="${p.id}">${p.nombre} (${p.especie})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input class="form-input" type="date" id="f2_fecha" value="${today()}">
+        </div>
+      </div>
+      <div id="medicamentos_list">
+        <div class="section-divider">Medicamentos</div>
+        <div id="meds_container">
+          ${buildMedRow(0)}
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="addMedRow()">+ Agregar medicamento</button>
+      </div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Indicaciones generales</label>
+        <textarea class="form-textarea" id="f2_indicaciones" rows="3" placeholder="Ej: Administrar con comida, no interrumpir el tratamiento..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Diagnóstico asociado</label>
+        <input class="form-input" id="f2_diagnostico" placeholder="Diagnóstico que motiva esta formulación">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Peso al momento de la formulación (kg)</label>
+        <input class="form-input" type="number" step="0.1" id="f2_peso">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarFormulacion()">Guardar</button>
+    </div>
+  </div>
+</div>`;
+};
+
+let medCount = 1;
+function buildMedRow(i) {
+  return `<div class="med-row" id="med_${i}" style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-bottom:8px">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Medicamento</label>
+        <input class="form-input" id="med_nombre_${i}" placeholder="Nombre del medicamento">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Concentración</label>
+        <input class="form-input" id="med_conc_${i}" placeholder="Ej: 500mg, 50mg/mL">
+      </div>
+    </div>
+    <div class="form-row-3">
+      <div class="form-group">
+        <label class="form-label">Dosis</label>
+        <input class="form-input" id="med_dosis_${i}" placeholder="Ej: 10mg/kg">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Frecuencia</label>
+        <input class="form-input" id="med_freq_${i}" placeholder="Ej: cada 12h">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Duración</label>
+        <input class="form-input" id="med_dur_${i}" placeholder="Ej: 7 días">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Vía de administración</label>
+      <select class="form-select" id="med_via_${i}">
+        ${['Oral','Subcutánea','Intramuscular','Intravenosa','Tópica','Oftálmica','Ótica','Inhalada','Otra'].map(v=>`<option>${v}</option>`).join('')}
+      </select>
+    </div>
+    ${i > 0 ? `<button class="btn btn-danger btn-sm" onclick="document.getElementById('med_${i}').remove()">Eliminar</button>` : ''}
+  </div>`;
+}
+
+function addMedRow() {
+  document.getElementById('meds_container').insertAdjacentHTML('beforeend', buildMedRow(medCount));
+  medCount++;
+}
+
+function guardarFormulacion() {
+  const pacId = document.getElementById('f2_paciente').value;
+  if (!pacId) { alert('Selecciona un paciente'); return; }
+  const meds = [];
+  document.querySelectorAll('.med-row').forEach(row => {
+    const id = row.id.split('_')[1];
+    const nombre = document.getElementById('med_nombre_' + id)?.value.trim();
+    if (nombre) meds.push({
+      nombre,
+      concentracion: document.getElementById('med_conc_' + id)?.value.trim(),
+      dosis: document.getElementById('med_dosis_' + id)?.value.trim(),
+      frecuencia: document.getElementById('med_freq_' + id)?.value.trim(),
+      duracion: document.getElementById('med_dur_' + id)?.value.trim(),
+      via: document.getElementById('med_via_' + id)?.value
+    });
+  });
+  const list = DB.get('formulaciones');
+  list.push({
+    id: DB.generateId(), tipo: 'formulacion', pacienteId: pacId,
+    fecha: document.getElementById('f2_fecha').value,
+    medicamento: meds.map(m=>m.nombre).join(', '),
+    medicamentos: meds,
+    indicaciones: document.getElementById('f2_indicaciones').value.trim(),
+    diagnostico: document.getElementById('f2_diagnostico').value.trim(),
+    peso: document.getElementById('f2_peso').value,
+    creadoEn: new Date().toISOString()
+  });
+  DB.set('formulaciones', list);
+  medCount = 1;
+  closeModal();
+  pages.formulacion();
+}
+
+// Ver registro
+modalTemplates.verRegistro = ({ registro: r, store }) => {
+  const pac = getPaciente(r.pacienteId);
+  const prop = getPropietarioByPaciente(r.pacienteId);
+  const t = TIPO_LABELS[r.tipo] || { label: r.tipo, icon: '📄', color: 'badge-gray' };
+  let detalles = '';
+
+  if (r.tipo === 'consulta') {
+    detalles = `
+      ${r.peso || r.temperatura ? `<div class="section-divider">Signos vitales</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+        ${r.peso ? `<div class="vital-box"><div class="vital-label">Peso</div><div class="vital-value">${r.peso}</div><div class="vital-unit">kg</div></div>` : ''}
+        ${r.temperatura ? `<div class="vital-box"><div class="vital-label">Temp.</div><div class="vital-value">${r.temperatura}</div><div class="vital-unit">°C</div></div>` : ''}
+        ${r.fc ? `<div class="vital-box"><div class="vital-label">FC</div><div class="vital-value">${r.fc}</div><div class="vital-unit">lpm</div></div>` : ''}
+        ${r.fr ? `<div class="vital-box"><div class="vital-label">FR</div><div class="vital-value">${r.fr}</div><div class="vital-unit">rpm</div></div>` : ''}
+        ${r.tll ? `<div class="vital-box"><div class="vital-label">TLL</div><div class="vital-value">${r.tll}</div><div class="vital-unit">seg</div></div>` : ''}
+        ${r.mucosas ? `<div class="vital-box"><div class="vital-label">Mucosas</div><div class="vital-value" style="font-size:12px">${r.mucosas}</div></div>` : ''}
+      </div>` : ''}
+      ${r.motivo ? `<div class="section-divider">Motivo</div><p style="font-size:13.5px;color:var(--gray-700)">${r.motivo}</p>` : ''}
+      ${r.examenFisico ? `<div class="section-divider">Examen físico</div><p style="font-size:13.5px;color:var(--gray-700)">${r.examenFisico}</p>` : ''}
+      ${r.diagnostico ? `<div class="section-divider">Diagnóstico</div><p style="font-size:13.5px;color:var(--gray-700)">${r.diagnostico}</p>` : ''}
+      ${r.tratamiento ? `<div class="section-divider">Tratamiento</div><p style="font-size:13.5px;color:var(--gray-700)">${r.tratamiento}</p>` : ''}
+      ${r.recomendaciones ? `<div class="section-divider">Recomendaciones</div><p style="font-size:13.5px;color:var(--gray-700)">${r.recomendaciones}</p>` : ''}`;
+  } else if (r.tipo === 'formulacion' && r.medicamentos) {
+    detalles = `<div class="section-divider">Medicamentos</div>` + r.medicamentos.map(m => `
+      <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-bottom:8px">
+        <div style="font-weight:600;color:var(--navy);font-size:14px">${m.nombre} ${m.concentracion ? '— ' + m.concentracion : ''}</div>
+        <div style="font-size:13px;color:var(--gray-600);margin-top:4px">
+          ${m.dosis ? `Dosis: ${m.dosis} · ` : ''}${m.frecuencia ? `${m.frecuencia} · ` : ''}${m.duracion ? m.duracion : ''}
+          ${m.via ? ` · Vía: ${m.via}` : ''}
+        </div>
+      </div>`).join('') +
+      (r.indicaciones ? `<div class="section-divider">Indicaciones</div><p style="font-size:13.5px;color:var(--gray-700)">${r.indicaciones}</p>` : '');
+  } else {
+    const campo = r.diagnostico || r.observaciones || r.resultados || r.tipoExamen || '—';
+    detalles = `<div style="background:var(--gray-50);border-radius:8px;padding:12px;font-size:13.5px;color:var(--gray-700)">${campo}</div>`;
+    if (r.planTratamiento) detalles += `<div class="section-divider">Plan de tratamiento</div><p style="font-size:13.5px">${r.planTratamiento}</p>`;
+    if (r.evolucion) detalles += `<div class="section-divider">Evolución</div><p style="font-size:13.5px">${r.evolucion}</p>`;
+    if (r.resultados) detalles = `<div class="section-divider">Resultados</div><p style="font-size:13.5px">${r.resultados}</p>`;
+  }
+
+  return `
+<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span>${t.icon}</span>
+        <div>
+          <div class="modal-title">${t.label}</div>
+          <div style="font-size:12px;color:var(--gray-500)">${formatDate(r.fecha||r.fechaIngreso)} · ${pac.nombre}</div>
+        </div>
+      </div>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      ${detalles}
+      ${(r.archivos||[]).length > 0 ? `
+        <div class="section-divider">Archivos adjuntos (${r.archivos.length})</div>
+        ${r.archivos.map(a => `
+          <div class="attachment-item">
+            <span class="attach-icon">${getFileIcon(a.type)}</span>
+            <div style="flex:1">
+              <div class="attach-name">${a.name}</div>
+              <div class="attach-size">${formatFileSize(a.size)}</div>
+            </div>
+            <a href="${a.data}" download="${a.name}" class="btn btn-outline btn-sm">⬇ Descargar</a>
+            ${a.type && a.type.includes('image') ? `<a href="${a.data}" target="_blank" class="btn btn-ghost btn-sm">👁 Ver</a>` : ''}
+            ${a.type && a.type.includes('pdf') ? `<a href="${a.data}" target="_blank" class="btn btn-ghost btn-sm">👁 Abrir</a>` : ''}
+          </div>`).join('')}
+      ` : ''}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>
+      <button class="btn btn-danger btn-sm" onclick="closeModal();eliminar('${store}','${r.id}')">🗑 Eliminar</button>
+    </div>
+  </div>
+</div>`;
+};
+
+// ═══════════════════════════════════════════
+// CRUD HELPERS
+// ═══════════════════════════════════════════
+function eliminar(store, id) {
+  if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
+  const list = DB.get(store).filter(x => x.id !== id);
+  DB.set(store, list);
+
+  // Si es propietario, limpiar referencia
+  if (store === 'propietarios') { navigate('propietarios'); }
+  else if (store === 'pacientes') {
+    const props = DB.get('propietarios').map(p => ({ ...p, mascotas: (p.mascotas||[]).filter(m=>m!==id) }));
+    DB.set('propietarios', props);
+    navigate('pacientes');
+  }
+  else if (store === 'consultas') pages.consultas();
+  else if (store === 'hospitalizaciones') pages.hospitalizacion();
+  else if (store === 'seguimientos') pages.seguimientos();
+  else if (store === 'examenes') pages.examenes();
+  else if (store === 'formulaciones') pages.formulacion();
+}
+
+// ═══════════════════════════════════════════
+// EXPORT PDF — HISTORIA CLÍNICA
+// ═══════════════════════════════════════════
+async function exportarHistoria(pacienteId) {
+  const pac = getPaciente(pacienteId);
+  const prop = getPropietarioByPaciente(pacienteId);
+  const registros = getRegistrosOf(pacienteId);
+
+  // Crear contenido HTML para imprimir
+  const win = window.open('', '_blank');
+  win.document.write(buildHistoriaHTML(pac, prop, registros));
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 800);
+}
+
+function buildHistoriaHTML(pac, prop, registros) {
+  const TIPO_ES = {
+    consulta: 'Consulta Médica',
+    hospitalizacion: 'Hospitalización',
+    seguimiento: 'Seguimiento',
+    examen: 'Examen Complementario',
+    formulacion: 'Formulación Médica'
+  };
+
+  const registrosHTML = registros.map(r => {
+    let contenido = '';
+
+    if (r.tipo === 'consulta') {
+      const vitales = [r.peso && `Peso: ${r.peso} kg`, r.temperatura && `Temperatura: ${r.temperatura} °C`,
+        r.fc && `FC: ${r.fc} lpm`, r.fr && `FR: ${r.fr} rpm`, r.mucosas && `Mucosas: ${r.mucosas}`].filter(Boolean);
+      contenido = `
+        ${r.motivo ? `<div class="field"><span class="field-label">Motivo:</span> ${r.motivo}</div>` : ''}
+        ${vitales.length ? `<div class="vitals-grid">${vitales.map(v=>`<div class="vital-item">${v}</div>`).join('')}</div>` : ''}
+        ${r.examenFisico ? `<div class="field"><span class="field-label">Examen físico:</span><p>${r.examenFisico}</p></div>` : ''}
+        ${r.diagnostico ? `<div class="field"><span class="field-label">Diagnóstico:</span><p>${r.diagnostico}</p></div>` : ''}
+        ${r.tratamiento ? `<div class="field"><span class="field-label">Tratamiento:</span><p>${r.tratamiento}</p></div>` : ''}
+        ${r.recomendaciones ? `<div class="field"><span class="field-label">Recomendaciones:</span><p>${r.recomendaciones}</p></div>` : ''}`;
+    } else if (r.tipo === 'formulacion' && r.medicamentos) {
+      contenido = `<div class="field"><span class="field-label">Diagnóstico:</span> ${r.diagnostico||'—'}</div>
+        <table class="med-table"><thead><tr><th>Medicamento</th><th>Concentración</th><th>Dosis</th><th>Frecuencia</th><th>Duración</th><th>Vía</th></tr></thead>
+        <tbody>${r.medicamentos.map(m=>`<tr><td><strong>${m.nombre}</strong></td><td>${m.concentracion||'—'}</td><td>${m.dosis||'—'}</td><td>${m.frecuencia||'—'}</td><td>${m.duracion||'—'}</td><td>${m.via||'—'}</td></tr>`).join('')}</tbody></table>
+        ${r.indicaciones ? `<div class="field"><span class="field-label">Indicaciones:</span> ${r.indicaciones}</div>` : ''}
+        ${r.peso ? `<div class="field"><span class="field-label">Peso formulación:</span> ${r.peso} kg</div>` : ''}`;
+    } else if (r.tipo === 'examen') {
+      contenido = `
+        ${r.tipoExamen ? `<div class="field"><span class="field-label">Tipo:</span> ${r.tipoExamen}</div>` : ''}
+        ${r.nombre ? `<div class="field"><span class="field-label">Examen:</span> ${r.nombre}</div>` : ''}
+        ${r.laboratorio ? `<div class="field"><span class="field-label">Laboratorio:</span> ${r.laboratorio}</div>` : ''}
+        ${r.resultados ? `<div class="field"><span class="field-label">Resultados/Interpretación:</span><p>${r.resultados}</p></div>` : ''}`;
+    } else if (r.tipo === 'hospitalizacion') {
+      contenido = `
+        ${r.diagnostico ? `<div class="field"><span class="field-label">Diagnóstico de ingreso:</span><p>${r.diagnostico}</p></div>` : ''}
+        ${r.motivo ? `<div class="field"><span class="field-label">Motivo:</span><p>${r.motivo}</p></div>` : ''}
+        ${r.planTratamiento ? `<div class="field"><span class="field-label">Plan de tratamiento:</span><p>${r.planTratamiento}</p></div>` : ''}
+        ${r.evolucion ? `<div class="field"><span class="field-label">Evolución:</span><p>${r.evolucion}</p></div>` : ''}
+        ${r.peso ? `<div class="field"><span class="field-label">Peso ingreso:</span> ${r.peso} kg</div>` : ''}
+        ${r.estado ? `<div class="field"><span class="field-label">Estado:</span> ${r.estado === 'activa' ? 'Activo' : 'Alta'}</div>` : ''}`;
+    } else if (r.tipo === 'seguimiento') {
+      contenido = `
+        ${r.tipoSeguimiento ? `<div class="field"><span class="field-label">Tipo:</span> ${r.tipoSeguimiento}</div>` : ''}
+        ${r.observaciones ? `<div class="field"><span class="field-label">Observaciones:</span><p>${r.observaciones}</p></div>` : ''}
+        ${r.proximaCita ? `<div class="field"><span class="field-label">Próxima cita:</span> ${formatDate(r.proximaCita)}</div>` : ''}`;
+    }
+
+    // Adjuntos (solo los que son imágenes se pueden mostrar; otros se listan)
+    const attachHTML = (r.archivos||[]).length > 0 ? `
+      <div class="attachments">
+        <div class="attach-header">📎 Archivos adjuntos (${r.archivos.length}):</div>
+        ${r.archivos.map(a => {
+          if (a.type && a.type.includes('image')) {
+            return `<div class="img-attach"><img src="${a.data}" alt="${a.name}" style="max-width:100%;max-height:300px;border-radius:6px;margin:6px 0;page-break-inside:avoid"><div class="attach-fname">${a.name}</div></div>`;
+          }
+          return `<div class="file-attach">📄 ${a.name} <span style="color:#888;font-size:11px">(${formatFileSize(a.size)})</span></div>`;
+        }).join('')}
+      </div>` : '';
+
+    return `<div class="registro-block">
+      <div class="registro-header">
+        <div class="registro-tipo">${TIPO_ES[r.tipo] || r.tipo}</div>
+        <div class="registro-fecha">${formatDate(r.fecha || r.fechaIngreso)}</div>
+      </div>
+      <div class="registro-body">${contenido}${attachHTML}</div>
+    </div>`;
+  }).join('');
+
+  const edad = pac.fechaNacimiento ? calcEdad(pac.fechaNacimiento) : '';
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Historia Clínica — ${pac.nombre}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #222; font-size: 12px; background: #fff; }
+  
+  .header { background: #0a2342; color: white; padding: 28px 36px; display: flex; align-items: center; gap: 20px; }
+  .header-logo { font-size: 32px; }
+  .header-title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-sub { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+  .header-right { margin-left: auto; text-align: right; font-size: 11px; opacity: 0.8; }
+
+  .pac-section { padding: 20px 36px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+  .pac-title { font-size: 18px; font-weight: 700; color: #0a2342; margin-bottom: 8px; }
+  .pac-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .pac-item { }
+  .pac-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 2px; }
+  .pac-value { font-size: 12px; color: #1e3a5c; font-weight: 500; }
+
+  .prop-section { padding: 12px 36px; background: #e8f4fd; border-bottom: 1px solid #cce6f7; }
+  .prop-label { font-size: 10px; font-weight: 600; text-transform: uppercase; color: #1e6fa0; margin-bottom: 4px; }
+  .prop-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .prop-item { font-size: 11.5px; color: #1a3a5c; }
+
+  .registros-title { padding: 16px 36px 8px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #1e6fa0; border-bottom: 2px solid #1e6fa0; margin: 0 36px 16px; }
+
+  .registro-block { margin: 0 36px 20px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; page-break-inside: avoid; }
+  .registro-header { background: #0a2342; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .registro-tipo { font-size: 12px; font-weight: 600; }
+  .registro-fecha { font-size: 11px; opacity: 0.8; }
+  .registro-body { padding: 14px 16px; }
+
+  .field { margin-bottom: 8px; }
+  .field-label { font-weight: 600; color: #0a2342; }
+  .field p { margin-top: 3px; color: #334155; line-height: 1.5; }
+
+  .vitals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+  .vital-item { background: #f1f5f9; border-radius: 4px; padding: 6px 10px; font-size: 11.5px; color: #1a3a5c; }
+
+  .med-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11.5px; }
+  .med-table th { background: #e8f4fd; color: #0a2342; padding: 6px 10px; text-align: left; font-weight: 600; font-size: 10.5px; }
+  .med-table td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
+
+  .attachments { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; }
+  .attach-header { font-weight: 600; color: #0a2342; margin-bottom: 6px; font-size: 11px; }
+  .file-attach { font-size: 11px; color: #334155; padding: 3px 0; }
+  .attach-fname { font-size: 10px; color: #64748b; }
+
+  .footer { margin: 24px 36px 16px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10.5px; color: #64748b; }
+  .sign-area { margin: 20px 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .sign-box { border-top: 1px solid #334155; padding-top: 6px; font-size: 11px; color: #64748b; text-align: center; }
+
+  @media print {
+    .registro-block { page-break-inside: avoid; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">🐾</div>
+  <div>
+    <div class="header-title">VetCloud — Historia Clínica Veterinaria</div>
+    <div class="header-sub">Sistema de Registro Médico Veterinario</div>
+  </div>
+  <div class="header-right">
+    Generado: ${new Date().toLocaleDateString('es-CO', { day:'2-digit', month:'long', year:'numeric' })}<br>
+    Total registros: ${registros.length}
+  </div>
+</div>
+
+<div class="pac-section">
+  <div class="pac-title">${speciesIcon(pac.especie)} ${pac.nombre}</div>
+  <div class="pac-grid">
+    <div class="pac-item"><div class="pac-label">Especie</div><div class="pac-value">${pac.especie||'—'}</div></div>
+    <div class="pac-item"><div class="pac-label">Raza</div><div class="pac-value">${pac.raza||'—'}</div></div>
+    <div class="pac-item"><div class="pac-label">Sexo</div><div class="pac-value">${pac.sexo||'—'}</div></div>
+    <div class="pac-item"><div class="pac-label">Fecha nacimiento</div><div class="pac-value">${formatDate(pac.fechaNacimiento)}${edad?' ('+edad+')':''}</div></div>
+    <div class="pac-item"><div class="pac-label">Color / Pelaje</div><div class="pac-value">${pac.color||'—'}</div></div>
+    <div class="pac-item"><div class="pac-label">Microchip</div><div class="pac-value">${pac.microchip||'—'}</div></div>
+    <div class="pac-item"><div class="pac-label">Estado reproductivo</div><div class="pac-value">${pac.estadoReproductivo||'—'}</div></div>
+    ${pac.alergias ? `<div class="pac-item" style="grid-column:span 2"><div class="pac-label" style="color:#dc2626">⚠️ Alergias</div><div class="pac-value" style="color:#dc2626">${pac.alergias}</div></div>` : ''}
+  </div>
+  ${pac.antecedentes ? `<div style="margin-top:10px;padding:8px;background:#f1f5f9;border-radius:6px;font-size:11.5px;color:#334155"><strong>Antecedentes:</strong> ${pac.antecedentes}</div>` : ''}
+</div>
+
+<div class="prop-section">
+  <div class="prop-label">Propietario</div>
+  <div class="prop-grid">
+    <div class="prop-item"><strong>${prop.nombre||'—'}</strong></div>
+    ${prop.documento ? `<div class="prop-item">Doc: ${prop.documento}</div>` : ''}
+    ${prop.telefono ? `<div class="prop-item">📞 ${prop.telefono}</div>` : ''}
+    ${prop.correo ? `<div class="prop-item">✉️ ${prop.correo}</div>` : ''}
+    ${prop.ciudad ? `<div class="prop-item">📍 ${prop.ciudad}${prop.direccion?', '+prop.direccion:''}</div>` : ''}
+  </div>
+</div>
+
+${registros.length > 0 ? `<div class="registros-title">Historia Clínica — ${registros.length} Registro(s)</div>${registrosHTML}` : '<div style="padding:30px 36px;color:#64748b;font-size:13px">Sin registros clínicos.</div>'}
+
+<div class="sign-area">
+  <div class="sign-box">Firma y sello del Médico Veterinario</div>
+  <div class="sign-box">Fecha y lugar</div>
+</div>
+
+<div class="footer">
+  <span>Historia clínica de: <strong>${pac.nombre}</strong></span>
+  <span>VetCloud — Sistema de Registro Veterinario</span>
+  <span>Generado el ${new Date().toLocaleDateString('es-CO')}</span>
+</div>
+
+</body>
+</html>`;
+}
+
+function calcEdad(fechaNac) {
+  const nac = new Date(fechaNac);
+  const hoy = new Date();
+  let años = hoy.getFullYear() - nac.getFullYear();
+  let meses = hoy.getMonth() - nac.getMonth();
+  if (meses < 0) { años--; meses += 12; }
+  if (años === 0) return `${meses} mes(es)`;
+  return `${años} año(s)${meses ? ', ' + meses + ' mes(es)' : ''}`;
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+updateDriveStatus();
+navigate('dashboard');
+</script>
+</body>
+</html>
